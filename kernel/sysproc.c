@@ -12,7 +12,7 @@ sys_exit(void)
   int n;
   argint(0, &n);
   exit(n);
-  return 0;  // not reached
+  return 0; // not reached
 }
 
 uint64
@@ -43,7 +43,7 @@ sys_sbrk(void)
 
   argint(0, &n);
   addr = myproc()->sz;
-  if(growproc(n) < 0)
+  if (growproc(n) < 0)
     return -1;
   return addr;
 }
@@ -54,12 +54,13 @@ sys_sleep(void)
   int n;
   uint ticks0;
 
-
   argint(0, &n);
   acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(killed(myproc())){
+  while (ticks - ticks0 < n)
+  {
+    if (killed(myproc()))
+    {
       release(&tickslock);
       return -1;
     }
@@ -69,12 +70,31 @@ sys_sleep(void)
   return 0;
 }
 
-
 #ifdef LAB_PGTBL
-int
-sys_pgaccess(void)
+int sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 va; // viryual address
+  int pagenum;
+  uint64 abitsaddr;
+  argaddr(0, &va);
+  argint(1, &pagenum);
+  argaddr(2, &abitsaddr);
+
+  uint64 maskbits = 0;
+  struct proc *proc = myproc(); // current process
+  for (int i = 0; i < pagenum; i++)
+  {
+    pte_t *pte = walk(proc->pagetable, va + i * PGSIZE, 0);
+    if (pte == 0)
+      panic("page not exist!");
+    if (PTE_FLAGS(*pte) & PTE_A)
+      maskbits = maskbits | (1L << i);
+    *pte = ((*pte & PTE_A) ^ *pte);
+  }
+  if (copyout(proc->pagetable, abitsaddr, (char *)&maskbits, sizeof(maskbits)) < 0)
+    panic("sys_pgaccess copyout error!");
+
   return 0;
 }
 #endif
